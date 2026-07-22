@@ -1,0 +1,113 @@
+# Neumonía UAO — Constitución del Proyecto
+
+> Contexto del proyecto para sesiones con asistentes LLM.
+> Trackeado al repositorio.
+
+---
+
+## Flujo Diario (commit + push)
+
+```bash
+# 1. Ver cambios
+git status
+
+# 2. Agregar y commitear
+git add -A
+git commit -m "tipo: mensaje descriptivo"
+
+# 3. Subir a GitHub
+git push
+```
+
+**Convención de commits:** Usar [Conventional Commits](https://www.conventionalcommits.org/):
+- `feat:` — nueva funcionalidad
+- `fix:` — corrección de bug
+- `docs:` — documentación
+- `refactor:` — refactorización
+- `style:` — formato, linting
+- `chore:` — tareas de mantenimiento
+
+---
+
+## Stack Técnico del Proyecto
+
+| Categoría | Tecnologías |
+|-----------|-------------|
+| **Lenguaje** | Python 3.10+ |
+| **Gestor de paquetes** | [uv](https://docs.astral.sh/uv/) |
+| **Deep Learning** | TensorFlow 2.21+, Matplotlib |
+| **Web / API** | Streamlit 1.60+, FastAPI, Uvicorn |
+| **Visión artificial** | OpenCV 5.0+, Pillow |
+| **Imágenes médicas** | PyDICOM |
+| **GUI escritorio** | Tkinter, PyAutoGUI, tkcap, img2pdf |
+| **Datos** | Pandas 2.3+ |
+| **Testing** | pytest 8+ (120 tests) |
+| **Linting** | Ruff |
+| **Pre-commit** | pre-commit |
+| **Dev** | watchdog |
+
+---
+
+## Historial de Decisiones Técnicas
+
+### Repositorio
+- **Nombre:** `neumonia_uao`
+- **Cuenta GitHub:** `hamsomp3`
+- **URL:** `git@github.com:hamsomp3/neumonia_uao.git`
+- **Rama principal:** `main`
+
+### Modelo CNN
+- Arquitectura: 5 bloques convolucionales con skip connections (WilhemNet86)
+- Pesos pre-entrenados en `models/conv_MLP_84.h5`
+- Clasificación: bacteriana, viral, sin neumonía
+- Explicabilidad: Grad-CAM
+
+### Migración a uv
+- Se migró de pip/conda a uv como gestor de paquetes
+- Las dependencias se declaran en `pyproject.toml`
+- Entorno virtual en `.venv/`
+
+### Tkinter en macOS
+- El Python de uv no incluye Tkinter
+- Solución: `uv sync --python /opt/homebrew/opt/python@3.10/bin/python3.10`
+- Requiere `brew install python-tk@3.10`
+
+---
+
+## Configuración Local (no trackear)
+
+> Configuración específica de esta máquina.
+> **NO incluir en commits.**
+> Copiar a nuevos proyectos personales cuando sea necesario.
+
+### Identidad Git Automática
+
+`~/.gitconfig` (global):
+```
+[includeIf "gitdir:~/Desktop/Repositorios/personal/"]
+    path = ~/.gitconfig-personal
+```
+
+`~/.gitconfig-personal`:
+```
+[user]
+    email = hamsomp3@gmail.com
+    name = Jan Polanco V.
+
+[core]
+    sshCommand = ssh -i ~/.ssh/id_ed25519
+```
+
+**Efecto:** Todo proyecto dentro de `~/Desktop/Repositorios/personal/` usa automáticamente:
+- **Email:** `hamsomp3@gmail.com`
+- **Nombre:** Jan Polanco V.
+- **Llave SSH:** `~/.ssh/id_ed25519`
+
+Sin necesidad de `gh`, variables de entorno ni flags manuales.
+
+### Remote actual
+
+```
+origin  git@github.com:hamsomp3/neumonia_uao.git (fetch)
+origin  git@github.com:hamsomp3/neumonia_uao.git (push)
+```
