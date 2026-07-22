@@ -1,3 +1,4 @@
+import contextlib
 import csv
 import os
 import tempfile
@@ -12,14 +13,49 @@ import detector_neumonia as dn
 # ── helper: patches for grad_cam's TF internals ──────────────────────
 
 
-def _patch_kgradients():
-    """Return a context manager that patches K so grad_cam can run
-    without a real TF graph."""
-    mock_k = MagicMock()
-    mock_k.gradients.return_value = [MagicMock()]
-    mock_k.mean.return_value = MagicMock()
-    mock_k.function.return_value = lambda _: (np.ones(64), np.ones((512, 512, 64)))
-    return patch("grad_cam.K", mock_k)
+def _mock_gradcam_tf():
+    """Return a context manager that patches TF internals so grad_cam
+    can run with eager-mode GradientTape mocks.
+
+    Also patches tf.keras.Model so the sub-model creation in grad_cam
+    returns a simple mock instead of trying to build a real model from
+    MagicMock inputs.
+    """
+    conv_4d = np.random.rand(1, 64, 64, 64).astype(np.float32)
+    conv_3d = np.random.rand(64, 64, 64).astype(np.float32)
+
+    stack = contextlib.ExitStack()
+    stack.enter_context(patch("grad_cam.tf.GradientTape", _mock_tape_cls(conv_4d)))
+    stack.enter_context(
+        patch("grad_cam.tf.reduce_mean", return_value=np.ones((64,), dtype=np.float32))
+    )
+    stack.enter_context(patch("grad_cam.tf.keras.Model", _mock_grad_model(conv_3d)))
+    return stack
+
+
+def _mock_tape_cls(conv_4d):
+    """Return a GradientTape class mock whose instance returns
+    gradient = conv_4d."""
+    cls = MagicMock()
+    tape = MagicMock()
+    cls.return_value = tape
+    tape.__enter__.return_value = tape
+    tape.gradient.return_value = conv_4d
+    return cls
+
+
+def _mock_grad_model(conv_3d):
+    """Return a factory that creates a grad-model mock whose __call__
+    returns a conv_output that is subscriptable with [0] → numpy array."""
+
+    def build(*args, **kwargs):
+        gm = MagicMock()
+        conv_mock = MagicMock()
+        conv_mock.__getitem__.return_value = conv_3d
+        gm.return_value = (conv_mock, MagicMock())
+        return gm
+
+    return build
 
 
 def _run_grad_cam(arr):
@@ -28,8 +64,19 @@ def _run_grad_cam(arr):
         m = MagicMock()
         m.predict.return_value = np.random.rand(1, 3).astype(np.float32)
         mock_mf.return_value = m
-        with _patch_kgradients():
+        with _mock_gradcam_tf():
             return dn.grad_cam(arr)
+
+
+def _mock_tape_cls(conv_4d):
+    """Return a GradientTape class mock whose instance returns
+    gradient = conv_4d."""
+    cls = MagicMock()
+    tape = MagicMock()
+    cls.return_value = tape
+    tape.__enter__.return_value = tape
+    tape.gradient.return_value = conv_4d
+    return cls
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -521,7 +568,7 @@ class TestGradCAM:
             m = MagicMock()
             m.predict.return_value = np.random.rand(1, 3).astype(np.float32)
             mock_mf.return_value = m
-            with _patch_kgradients():
+            with _mock_gradcam_tf():
                 dn.grad_cam(rgb_512)
         assert mock_mf.called
 
@@ -539,7 +586,7 @@ class TestGradCAM:
             preds = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
             m.predict.return_value = preds
             mock_mf.return_value = m
-            with _patch_kgradients():
+            with _mock_gradcam_tf():
                 r1 = dn.grad_cam(rgb_512)
                 r2 = dn.grad_cam(rgb_512)
         np.testing.assert_array_equal(r1, r2)
@@ -560,7 +607,7 @@ class TestGradCAM:
             m = MagicMock()
             m.predict.return_value = np.random.rand(1, 3).astype(np.float32)
             mock_mf.return_value = m
-            with _patch_kgradients():
+            with _mock_gradcam_tf():
                 dn.grad_cam(rgb_512)
         assert m.predict.called
 
@@ -805,6 +852,40 @@ class TestEdgeCases:
     def test_preprocess_none_raises(self):
         with pytest.raises(Exception):
             dn.preprocess(None)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  10. Integración (requiere modelo .h5 real)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestIntegration:
+    """Pruebas end-to-end que requieren el archivo .h5 e imágenes locales.
+
+    Se saltan automáticamente si los recursos no están disponibles,
+    permitiendo ejecución en CI sin el modelo.
+    """
+
+    MODEL_PATH = "models/conv_MLP_84.h5"
+
+    def test_model_loads_without_error(self):
+        if not os.path.exists(self.MODEL_PATH):
+            pytest.skip("Modelo .h5 no disponible localmente")
+        model = dn.model_fun()
+        assert hasattr(model, "predict")
+        assert hasattr(model, "output")
+
+    def test_predict_end_to_end(self):
+        if not os.path.exists(self.MODEL_PATH):
+            pytest.skip("Modelo .h5 no disponible localmente")
+        img_path = "images/JPG/normal/NORMAL2-IM-1144-0001.jpeg"
+        if not os.path.exists(img_path):
+            pytest.skip("Imagen de prueba no disponible")
+        array, _ = dn.read_jpg_file(img_path)
+        label, proba, heatmap = dn.predict(array)
+        assert label in ("bacteriana", "normal", "viral")
+        assert 0 <= proba <= 100
+        assert heatmap.shape == (512, 512, 3)
 
 
 # ═══════════════════════════════════════════════════════════════════════

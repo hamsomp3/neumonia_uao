@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "everything-claude-code": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/everything-claude-code/SKILL.md",
+      "computedHash": "1fed753cecf740428b032b34e62d48797aca8d7b9ba789e0b349f6e9c6728030"
+    }
+  }
+}

@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/Python-3.13%2B-blue?logo=python" alt="Python 3.13+">
   <img src="https://img.shields.io/badge/TensorFlow-2.21%2B-orange?logo=tensorflow" alt="TensorFlow">
   <img src="https://img.shields.io/badge/OpenCV-5.0%2B-brightgreen?logo=opencv" alt="OpenCV">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT">
   <img src="https://img.shields.io/badge/uv-package%20manager-purple" alt="uv">
-  <img src="https://img.shields.io/badge/tests-115%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-117%20passed-brightgreen" alt="Tests">
 </p>
 
 <h1 align="center">🫁 Neumonía Detector</h1>
@@ -34,20 +34,24 @@ Incluye **Grad-CAM** (Gradient-weighted Class Activation Mapping) para generar m
 - **Predicción** — Clasificación en neumonía bacteriana, viral o sano con porcentaje de confianza
 - **Grad-CAM** — Visualización del mapa de calor sobre la imagen original
 - **Exportación** — Guardado de resultados en CSV y generación de PDF con el reporte
-- **Interfaz gráfica** — App de escritorio construida con Tkinter
+- **Interfaz gráfica** — App de escritorio construida con CustomTkinter (theme toggle, badges de diagnóstico, diálogo PDF modal)
 
 ## Arquitectura
 
-El código está organizado en **6 módulos** dentro de `src/` con responsabilidades únicas:
+El código sigue el patrón **MVC** y está organizado en módulos con responsabilidades únicas:
 
 | Módulo | Responsabilidad |
 |--------|----------------|
-| `detector_neumonia.py` | App Tkinter (entrada principal) |
+| `detector_neumonia.py` | Facade + entry point (delega en MVC) |
 | `read_img.py` | Lectura de imágenes DICOM/JPG/PNG |
 | `preprocess_img.py` | Preprocesamiento: resize, CLAHE, normalización |
 | `load_model.py` | Carga y validación del modelo CNN |
 | `grad_cam.py` | Generación de mapa de calor Grad-CAM |
 | `integrator.py` | Orquestador del pipeline predictivo |
+| `gui/theme.py` | Paleta de colores, badges diagnóstico, `configure_ctk()` |
+| `gui/worker.py` | `AsyncWorker` para tareas en background |
+| `gui/views.py` | Componentes UI (HeaderFrame, ImagePreview, PdfDialog…) |
+| `gui/controller.py` | `AppController` — orquesta vistas + eventos |
 
 ---
 
@@ -76,9 +80,9 @@ La red neuronal convolucional está basada en el artículo *"Efficient Deep Netw
 | **Web / API** | [Streamlit 1.60+](https://streamlit.io), [FastAPI](https://fastapi.tiangolo.com), [Uvicorn](https://www.uvicorn.org) |
 | **Visión artificial** | [OpenCV 5.0+](https://opencv.org), [Pillow](https://python-pillow.org) |
 | **Imágenes médicas** | [PyDICOM](https://pydicom.github.io) |
-| **GUI escritorio** | Tkinter, [PyAutoGUI](https://pyautogui.readthedocs.io), [tkcap](https://pypi.org/project/tkcap/), [img2pdf](https://pypi.org/project/img2pdf/) |
+| **GUI escritorio** | [CustomTkinter](https://customtkinter.tomschimansky.com), [PyAutoGUI](https://pyautogui.readthedocs.io) |
 | **Datos** | [Pandas 2.3+](https://pandas.pydata.org) |
-| **Testing** | [pytest 8+](https://docs.pytest.org), 120 tests |
+| **Testing** | [pytest 8+](https://docs.pytest.org), 117 tests |
 | **Dev** | [watchdog](https://python-watchdog.readthedocs.io) |
 
 ---
@@ -113,12 +117,12 @@ cd neumonia_uao
 uv sync
 
 # 4. (macOS) Si Tkinter falla, usar Python de Homebrew con Tk
-uv sync --python /opt/homebrew/opt/python@3.10/bin/python3.10
+uv sync --python /opt/homebrew/opt/python@3.13/bin/python3.13
 ```
 
 > **Nota para macOS**: El Python incluido por `uv` no incluye soporte para Tkinter.
 > `uv sync --python ...` recrea el entorno virtual usando el Python de Homebrew
-> (requiere `brew install python-tk@3.10`).
+> (requiere `brew install python-tk@3.13`).
 
 ---
 
@@ -133,7 +137,7 @@ make detector
 
 ## Tests
 
-El proyecto incluye **115 pruebas unitarias** con `pytest`.
+El proyecto incluye **117 pruebas unitarias** con `pytest`.
 
 ### Cobertura
 
@@ -162,13 +166,15 @@ uv run pytest test/test_detector.py::TestPreprocess -v
 uv run pytest --cov=.
 ```
 
-La interfaz Tkinter permite:
+La interfaz CustomTkinter (MVC) permite:
 1. Ingresar la cédula del paciente
-2. Cargar una imagen radiográfica (DICOM o JPG)
+2. Cargar una imagen radiográfica (DICOM o JPG/PNG)
 3. Presionar **Predecir** para obtener el diagnóstico
 4. Visualizar el mapa de calor Grad-CAM
 5. **Guardar** resultados en CSV
-6. **PDF** para descargar el reporte
+6. **PDF** para descargar el reporte (diálogo modal con preview)
+7. Cambiar entre modo **claro/oscuro** con un botón en el header
+8. Los diagnósticos se muestran con **badges de color** (verde = normal, naranja = viral, rojo = bacteriana)
 
 ---
 
@@ -177,16 +183,22 @@ La interfaz Tkinter permite:
 ```
 neumonia_uao/
 ├── src/                          ← Código fuente
-│   ├── detector_neumonia.py      ← App Tkinter (entrada principal)
+│   ├── detector_neumonia.py      ← Facade + entry point (delega en MVC)
 │   ├── read_img.py               ← Lectura DICOM / JPG / PNG
 │   ├── preprocess_img.py         ← Preprocesamiento (CLAHE, resize)
 │   ├── load_model.py             ← Carga del modelo CNN
 │   ├── grad_cam.py               ← Mapa de calor Grad-CAM
-│   └── integrator.py             ← Orquestador del pipeline
+│   ├── integrator.py             ← Orquestador del pipeline
+│   └── gui/                      ← Capa de interfaz (MVC)
+│       ├── __init__.py
+│       ├── theme.py              ← Paleta, badges, configure_ctk()
+│       ├── worker.py             ← AsyncWorker (ThreadPoolExecutor)
+│       ├── views.py              ← Componentes CTk reutilizables
+│       └── controller.py         ← AppController orquestador
 ├── test/                         ← Tests unitarios
 │   ├── __init__.py
 │   ├── conftest.py               ← Fixtures compartidos
-│   └── test_detector.py          ← 115 tests
+│   └── test_detector.py          ← 117 tests
 ├── images/                       ← Imágenes de prueba (DICOM / JPG)
 ├── models/
 │   └── conv_MLP_84.h5           ← Modelo CNN pre-entrenado

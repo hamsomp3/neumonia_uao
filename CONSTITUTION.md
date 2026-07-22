@@ -11,11 +11,18 @@
 # 1. Ver cambios
 git status
 
-# 2. Agregar y commitear
+# 2. Verificar que la app Tkinter arranca sin errores
+make detector
+# (cerrar la ventana manualmente)
+
+# 3. Ejecutar tests
+uv run pytest -v
+
+# 4. Agregar y commitear
 git add -A
 git commit -m "tipo: mensaje descriptivo"
 
-# 3. Subir a GitHub
+# 5. Subir a GitHub
 git push
 ```
 
@@ -33,14 +40,14 @@ git push
 
 | Categoría | Tecnologías |
 |-----------|-------------|
-| **Lenguaje** | Python 3.10+ |
+| **Lenguaje** | Python 3.13+ |
 | **Gestor de paquetes** | [uv](https://docs.astral.sh/uv/) |
 | **Deep Learning** | TensorFlow 2.21+, Matplotlib |
 | **Visión artificial** | OpenCV 5.0+, Pillow |
 | **Imágenes médicas** | PyDICOM |
-| **GUI escritorio** | Tkinter, PyAutoGUI, tkcap, img2pdf |
+| **GUI escritorio** | CustomTkinter, PyAutoGUI |
 | **Datos** | Pandas 2.3+ |
-| **Testing** | pytest 8+ (115 tests) |
+| **Testing** | pytest 8+ (117 tests) |
 | **Linting** | Ruff |
 | **Pre-commit** | pre-commit |
 | **Dev** | watchdog |
@@ -68,8 +75,8 @@ git push
 
 ### Tkinter en macOS
 - El Python de uv no incluye Tkinter
-- Solución: `uv sync --python /opt/homebrew/opt/python@3.10/bin/python3.10`
-- Requiere `brew install python-tk@3.10`
+- Solución: `uv sync --python /opt/homebrew/opt/python@3.13/bin/python3.13`
+- Requiere `brew install python-tk@3.13`
 
 ### Refactorización a src/ layout
 - Todo el código fuente se movió a `src/`
@@ -83,6 +90,23 @@ git push
 - 5 módulos con responsabilidad única: `read_img`, `preprocess_img`, `load_model`, `grad_cam`, `integrator`
 - Cada módulo tiene type hints, docstrings PEP 257, y manejo de excepciones explícito
 - Las 115 pruebas unitarias se actualizaron con las rutas de patch correctas
+
+### Refactorización MVC (CustomTkinter)
+- `detector_neumonia.py` se simplificó a facade puro (re-exports + `main()` delegando en `gui.controller.main()`)
+- Se creó `src/gui/` package con arquitectura MVC:
+  - `theme.py` — paleta de colores médicos, badges diagnóstico (rojo/naranja/verde), `configure_ctk()`
+  - `worker.py` — `AsyncWorker` con `ThreadPoolExecutor` + `root.after()` para tareas en background
+  - `views.py` — componentes CTk reutilizables (`HeaderFrame`, `ImagePreviewFrame`, `HeatmapPreviewFrame`, `ResultsFrame`, `ControlFrame`, `StatusBar`, `PdfDialog`)
+  - `controller.py` — `AppController` que orquesta vistas, worker y callbacks de eventos
+- `customtkinter` reemplaza a Tkinter estándar y `tkcap` (PDF ahora usa Pillow directamente)
+- Theme toggle (light/dark) con botón en el header
+- 117 tests unitarios (se agregaron 2 por el manejo de modos oscuro/claro)
+
+### compile=False para compatibilidad con Keras ≥3
+- El modelo `.h5` original usaba `reduction="auto"` en la loss function, incompatible con Keras 3
+- Solución: `tf.keras.models.load_model(MODEL_PATH, compile=False)`
+- El modelo funciona igual para inferencia y Grad-CAM (no requiere `compile`)
+- `test_predict_end_to_end` verifica el pipeline real localmente (se salta si no hay `.h5`)
 
 ---
 

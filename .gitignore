@@ -12,3 +12,8 @@ wheels/
 # Virtual environments
 .venv
 models/
+
+# Generated artifacts
+*.pdf
+historial.csv
+images/**/*.csv
