@@ -51,6 +51,7 @@ testpaths = ["test"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+pythonpath = ["src"]
 
 [project.urls]
 Homepage = "https://github.com/dalquinones/UAO-Neumonia"
@@ -67,7 +68,7 @@ ignore = ["F403", "F405", "N812", "E402"]
 quote-style = "double"
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+packages = ["src"]
 
 [build-system]
 requires = ["hatchling"]

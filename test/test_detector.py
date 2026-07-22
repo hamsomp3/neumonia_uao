@@ -838,37 +838,3 @@ class TestCSVExport:
     def test_id_with_hyphen(self):
         parts = "-".join(["123-456", "normal", "80.00%"]).split("-")
         assert len(parts) >= 4
-
-
-# ═══════════════════════════════════════════════════════════════════════
-#  10. FastAPI (main.py) — 5 tests
-# ═══════════════════════════════════════════════════════════════════════
-
-
-class TestFastAPI:
-    def test_module_imports(self):
-        import main
-
-        assert main is not None
-
-    def test_has_main_function(self):
-        import main
-
-        assert hasattr(main, "main")
-
-    def test_main_returns_none(self):
-        import main
-
-        assert main.main() is None
-
-    def test_main_callable(self):
-        import main
-
-        assert callable(main.main)
-
-    def test_reload_works(self):
-        import importlib
-
-        import main
-
-        importlib.reload(main)

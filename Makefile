@@ -1,4 +1,4 @@
-.PHONY: limpiar stream back front detector test
+.PHONY: limpiar detector test
 
 
 limpiar:
@@ -10,25 +10,10 @@ limpiar:
 	clear
 	clear
 
-stream:
-	make limpiar
-	@echo "Ejecucion del streamlit"
-	uv run streamlit run prueba.py
-	
-back:
-	make limpiar
-	@echo "Ejecucion del backend"
-	uv run uvicorn main:app --reload
-
-front:
-	make limpiar
-	@echo "Ejecucion del frontend"
-	uv run uvicorn main:app --reload
-
 detector:
 	make limpiar
 	@echo "Ejecucion del detector de neumonia"
-	uv run detector_neumonia.py
+	uv run python -m src.detector_neumonia
 
 test:
 	make limpiar
