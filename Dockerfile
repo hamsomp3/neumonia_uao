@@ -7,4 +7,5 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --no-dev
 COPY src/ ./src/
+ENV PYTHONPATH=/app/src
 CMD ["uv", "run", "python", "-m", "src.detector_neumonia"]

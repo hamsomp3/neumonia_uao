@@ -13,7 +13,7 @@ limpiar:
 detector:
 	make limpiar
 	@echo "Ejecucion del detector de neumonia"
-	uv run python -m src.detector_neumonia
+	PYTHONPATH=src uv run python -m src.detector_neumonia
 
 test:
 	make limpiar
