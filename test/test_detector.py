@@ -19,12 +19,12 @@ def _patch_kgradients():
     mock_k.gradients.return_value = [MagicMock()]
     mock_k.mean.return_value = MagicMock()
     mock_k.function.return_value = lambda _: (np.ones(64), np.ones((512, 512, 64)))
-    return patch("detector_neumonia.K", mock_k)
+    return patch("grad_cam.K", mock_k)
 
 
 def _run_grad_cam(arr):
     """Run grad_cam with all TF internals patched."""
-    with patch("detector_neumonia.model_fun") as mock_mf:
+    with patch("grad_cam.model_fun") as mock_mf:
         m = MagicMock()
         m.predict.return_value = np.random.rand(1, 3).astype(np.float32)
         mock_mf.return_value = m
@@ -138,7 +138,7 @@ class TestPreprocess:
 
 
 class TestReadDicomFile:
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_returns_tuple(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((64, 64), dtype=np.uint16)
@@ -146,28 +146,28 @@ class TestReadDicomFile:
         result = dn.read_dicom_file("f.dcm")
         assert isinstance(result, tuple) and len(result) == 2
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_first_element_ndarray(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((64, 64), dtype=np.uint16)
         mock_dcm.return_value = ds
         assert isinstance(dn.read_dicom_file("f.dcm")[0], np.ndarray)
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_second_element_pil_image(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((64, 64), dtype=np.uint16)
         mock_dcm.return_value = ds
         assert isinstance(dn.read_dicom_file("f.dcm")[1], Image.Image)
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_output_uint8(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((64, 64), dtype=np.uint16)
         mock_dcm.return_value = ds
         assert dn.read_dicom_file("f.dcm")[0].dtype == np.uint8
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_values_clipped_0_255(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.array([[1000, 4000]], dtype=np.uint16)
@@ -175,7 +175,7 @@ class TestReadDicomFile:
         r = dn.read_dicom_file("f.dcm")[0]
         assert r.min() >= 0 and r.max() <= 255
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_output_3_channels(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((32, 32), dtype=np.uint16)
@@ -183,19 +183,19 @@ class TestReadDicomFile:
         r = dn.read_dicom_file("f.dcm")[0]
         assert r.ndim == 3 and r.shape[-1] == 3
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_raises_file_not_found(self, mock_dcm):
         mock_dcm.side_effect = FileNotFoundError
         with pytest.raises(Exception):
             dn.read_dicom_file("missing.dcm")
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_raises_on_corrupt(self, mock_dcm):
         mock_dcm.side_effect = OSError
         with pytest.raises(Exception):
             dn.read_dicom_file("bad.dcm")
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_calls_dcmread(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((10, 10), dtype=np.uint16)
@@ -203,14 +203,14 @@ class TestReadDicomFile:
         dn.read_dicom_file("test.dcm")
         mock_dcm.assert_called_once_with("test.dcm")
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_non_empty(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((256, 256), dtype=np.uint16)
         mock_dcm.return_value = ds
         assert dn.read_dicom_file("f.dcm")[0].size > 0
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_large_dicom(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((2048, 2048), dtype=np.uint16)
@@ -218,14 +218,14 @@ class TestReadDicomFile:
         r = dn.read_dicom_file("large.dcm")[0]
         assert r.shape[-1] == 3
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_uint16_to_uint8(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((16, 16), dtype=np.uint16)
         mock_dcm.return_value = ds
         assert dn.read_dicom_file("f.dcm")[0].dtype == np.uint8
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_all_zeros(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.zeros((16, 16), dtype=np.uint16)
@@ -233,7 +233,7 @@ class TestReadDicomFile:
         r = dn.read_dicom_file("zero.dcm")[0]
         assert r.dtype == np.uint8
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_uint16_array_unchanged(self, mock_dcm):
         arr = np.array([[100, 200]], dtype=np.uint16)
         ds = MagicMock()
@@ -242,7 +242,7 @@ class TestReadDicomFile:
         dn.read_dicom_file("f.dcm")
         assert np.array_equal(ds.pixel_array, arr)
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_int16_handled(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.array([[-100, 100]], dtype=np.int16)
@@ -256,83 +256,83 @@ class TestReadDicomFile:
 
 
 class TestReadJpgFile:
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_returns_tuple(self, mock_imread):
         mock_imread.return_value = np.ones((32, 32, 3), dtype=np.uint8)
         r = dn.read_jpg_file("f.jpg")
         assert isinstance(r, tuple) and len(r) == 2
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_first_element_ndarray(self, mock_imread):
         mock_imread.return_value = np.ones((32, 32, 3), dtype=np.uint8)
         assert isinstance(dn.read_jpg_file("f.jpg")[0], np.ndarray)
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_second_element_pil_image(self, mock_imread):
         mock_imread.return_value = np.ones((32, 32, 3), dtype=np.uint8)
         assert isinstance(dn.read_jpg_file("f.jpg")[1], Image.Image)
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_output_uint8(self, mock_imread):
         mock_imread.return_value = np.ones((32, 32, 3), dtype=np.uint8)
         assert dn.read_jpg_file("f.jpg")[0].dtype == np.uint8
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_values_0_255(self, mock_imread):
         mock_imread.return_value = np.ones((32, 32, 3), dtype=np.uint8) * 128
         r = dn.read_jpg_file("f.jpg")[0]
         assert r.min() >= 0 and r.max() <= 255
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_raises_on_missing(self, mock_imread):
         mock_imread.return_value = None
         with pytest.raises(Exception):
             dn.read_jpg_file("missing.jpg")
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_grayscale_to_rgb(self, mock_imread):
         gray = np.ones((32, 32), dtype=np.uint8)
         mock_imread.return_value = gray
         r = dn.read_jpg_file("gray.jpg")[0]
         assert isinstance(r, np.ndarray)
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_shape_preserved(self, mock_imread):
         mock_imread.return_value = np.ones((200, 300, 3), dtype=np.uint8)
         assert dn.read_jpg_file("f.jpg")[0].shape == (200, 300, 3)
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_calls_imread(self, mock_imread):
         mock_imread.return_value = np.ones((10, 10, 3), dtype=np.uint8)
         dn.read_jpg_file("photo.jpg")
         mock_imread.assert_called_once_with("photo.jpg")
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_png_supported(self, mock_imread):
         mock_imread.return_value = np.ones((16, 16, 3), dtype=np.uint8)
         assert isinstance(dn.read_jpg_file("img.png")[0], np.ndarray)
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_non_empty(self, mock_imread):
         mock_imread.return_value = np.ones((256, 256, 3), dtype=np.uint8)
         assert dn.read_jpg_file("f.jpg")[0].size > 0
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_black_image(self, mock_imread):
         mock_imread.return_value = np.zeros((16, 16, 3), dtype=np.uint8)
         assert dn.read_jpg_file("black.jpg")[0].max() == 0
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_white_image(self, mock_imread):
         mock_imread.return_value = np.full((16, 16, 3), 255, dtype=np.uint8)
         assert dn.read_jpg_file("white.jpg")[0].min() == 255
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_rgba_accepted(self, mock_imread):
         mock_imread.return_value = np.ones((16, 16, 4), dtype=np.uint8)
         assert isinstance(dn.read_jpg_file("rgba.png")[0], np.ndarray)
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_high_res(self, mock_imread):
         mock_imread.return_value = np.ones((4000, 3000, 3), dtype=np.uint8)
         assert dn.read_jpg_file("hires.jpg")[0].shape == (4000, 3000, 3)
@@ -344,8 +344,8 @@ class TestReadJpgFile:
 
 
 class TestPredict:
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_returns_tuple(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
@@ -354,8 +354,8 @@ class TestPredict:
         r = dn.predict(rgb_512)
         assert isinstance(r, tuple) and len(r) == 3
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_label_bacteriana(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.9, 0.05, 0.05]], dtype=np.float32)
@@ -363,8 +363,8 @@ class TestPredict:
         mock_gc.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
         assert dn.predict(rgb_512)[0] == "bacteriana"
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_label_normal(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.05, 0.9, 0.05]], dtype=np.float32)
@@ -372,8 +372,8 @@ class TestPredict:
         mock_gc.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
         assert dn.predict(rgb_512)[0] == "normal"
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_label_viral(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.05, 0.05, 0.9]], dtype=np.float32)
@@ -381,8 +381,8 @@ class TestPredict:
         mock_gc.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
         assert dn.predict(rgb_512)[0] == "viral"
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_probability_numeric(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
@@ -390,8 +390,8 @@ class TestPredict:
         mock_gc.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
         assert np.issubdtype(type(dn.predict(rgb_512)[1]), np.floating)
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_probability_range(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
@@ -400,8 +400,8 @@ class TestPredict:
         p = dn.predict(rgb_512)[1]
         assert 0 <= p <= 100
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_highest_prob_wins(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.2, 0.3, 0.5]], dtype=np.float32)
@@ -409,8 +409,8 @@ class TestPredict:
         mock_gc.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
         assert dn.predict(rgb_512)[0] == "viral"
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_heatmap_ndarray(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
@@ -418,8 +418,8 @@ class TestPredict:
         mock_gc.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
         assert isinstance(dn.predict(rgb_512)[2], np.ndarray)
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_heatmap_shape_512(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
@@ -427,8 +427,8 @@ class TestPredict:
         mock_gc.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
         assert dn.predict(rgb_512)[2].shape == (512, 512, 3)
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_calls_grad_cam(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
@@ -437,20 +437,20 @@ class TestPredict:
         dn.predict(rgb_512)
         mock_gc.assert_called_once()
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_calls_preprocess(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
         mock_mf.return_value = m
         mock_gc.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
-        with patch("detector_neumonia.preprocess") as mock_pp:
+        with patch("integrator.preprocess") as mock_pp:
             mock_pp.return_value = np.random.rand(1, 512, 512, 1).astype(np.float32)
             dn.predict(rgb_512)
         mock_pp.assert_called_once()
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_confidence_100(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[1.0, 0.0, 0.0]], dtype=np.float32)
@@ -458,8 +458,8 @@ class TestPredict:
         mock_gc.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
         assert dn.predict(rgb_512)[1] == 100.0
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_confidence_0(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         m.predict.return_value = np.array([[0.0, 0.0, 0.0]], dtype=np.float32)
@@ -467,8 +467,8 @@ class TestPredict:
         mock_gc.return_value = np.zeros((512, 512, 3), dtype=np.uint8)
         assert dn.predict(rgb_512)[1] == 0.0
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
     def test_deterministic(self, mock_gc, mock_mf, rgb_512):
         m = MagicMock()
         preds = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
@@ -502,7 +502,7 @@ class TestGradCAM:
         assert result.shape == (512, 512, 3)
 
     def test_grayscale_input(self, gray_512):
-        with patch("detector_neumonia.preprocess") as mock_pp:
+        with patch("grad_cam.preprocess") as mock_pp:
             mock_pp.return_value = np.random.rand(1, 512, 512, 1).astype(np.float32)
             gray_3ch = np.stack([gray_512] * 3, axis=-1)
             result = _run_grad_cam(gray_3ch)
@@ -517,7 +517,7 @@ class TestGradCAM:
         assert result.min() >= 0 and result.max() <= 255
 
     def test_calls_model_fun(self, rgb_512):
-        with patch("detector_neumonia.model_fun") as mock_mf:
+        with patch("grad_cam.model_fun") as mock_mf:
             m = MagicMock()
             m.predict.return_value = np.random.rand(1, 3).astype(np.float32)
             mock_mf.return_value = m
@@ -534,7 +534,7 @@ class TestGradCAM:
         assert result.shape[2] == 3
 
     def test_deterministic(self, rgb_512):
-        with patch("detector_neumonia.model_fun") as mock_mf:
+        with patch("grad_cam.model_fun") as mock_mf:
             m = MagicMock()
             preds = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
             m.predict.return_value = preds
@@ -556,7 +556,7 @@ class TestGradCAM:
         assert result.shape == (512, 512, 3)
 
     def test_model_predict_called(self, rgb_512):
-        with patch("detector_neumonia.model_fun") as mock_mf:
+        with patch("grad_cam.model_fun") as mock_mf:
             m = MagicMock()
             m.predict.return_value = np.random.rand(1, 3).astype(np.float32)
             mock_mf.return_value = m
@@ -575,51 +575,51 @@ class TestGradCAM:
 
 
 class TestModelFun:
-    @patch("detector_neumonia.tf.keras.models.load_model")
+    @patch("load_model.tf.keras.models.load_model")
     def test_returns_model(self, mock_load):
         mock_load.return_value = MagicMock()
         assert dn.model_fun() is not None
 
-    @patch("detector_neumonia.tf.keras.models.load_model")
+    @patch("load_model.tf.keras.models.load_model")
     def test_raises_on_missing(self, mock_load):
         mock_load.side_effect = OSError()
         with pytest.raises(FileNotFoundError):
             dn.model_fun()
 
-    @patch("detector_neumonia.tf.keras.models.load_model")
+    @patch("load_model.tf.keras.models.load_model")
     def test_error_contains_model_name(self, mock_load):
         mock_load.side_effect = OSError()
         with pytest.raises(FileNotFoundError) as exc:
             dn.model_fun()
         assert "conv_MLP_84.h5" in str(exc.value)
 
-    @patch("detector_neumonia.tf.keras.models.load_model")
+    @patch("load_model.tf.keras.models.load_model")
     def test_calls_load_model(self, mock_load):
         mock_load.return_value = MagicMock()
         dn.model_fun()
         assert mock_load.call_count >= 1
 
-    @patch("detector_neumonia.tf.keras.models.load_model")
+    @patch("load_model.tf.keras.models.load_model")
     def test_path_contains_models(self, mock_load):
         mock_load.return_value = MagicMock()
         dn.model_fun()
         path = mock_load.call_args[0][0]
         assert "models/" in str(path)
 
-    @patch("detector_neumonia.tf.keras.models.load_model")
+    @patch("load_model.tf.keras.models.load_model")
     def test_path_has_h5(self, mock_load):
         mock_load.return_value = MagicMock()
         dn.model_fun()
         path = mock_load.call_args[0][0]
         assert ".h5" in str(path)
 
-    @patch("detector_neumonia.tf.keras.models.load_model")
+    @patch("load_model.tf.keras.models.load_model")
     def test_corrupted_model_raises(self, mock_load):
         mock_load.side_effect = OSError("corrupted")
         with pytest.raises(FileNotFoundError):
             dn.model_fun()
 
-    @patch("detector_neumonia.tf.keras.models.load_model")
+    @patch("load_model.tf.keras.models.load_model")
     def test_valid_file_does_not_raise(self, mock_load):
         mock_load.return_value = MagicMock()
         try:
@@ -627,12 +627,12 @@ class TestModelFun:
         except Exception:
             pytest.fail("raised unexpectedly")
 
-    @patch("detector_neumonia.tf.keras.models.load_model")
+    @patch("load_model.tf.keras.models.load_model")
     def test_returned_model_has_predict(self, mock_load):
         mock_load.return_value = MagicMock()
         assert hasattr(dn.model_fun(), "predict")
 
-    @patch("detector_neumonia.tf.keras.models.load_model")
+    @patch("load_model.tf.keras.models.load_model")
     def test_model_returns_3_classes(self, mock_load):
         m = MagicMock()
         m.predict.return_value = np.array([[0.1, 0.8, 0.1]])
@@ -648,8 +648,8 @@ class TestModelFun:
 
 
 class TestReadDicomVsJpg:
-    @patch("detector_neumonia.pydicom.dcmread")
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.pydicom.dcmread")
+    @patch("read_img.cv2.imread")
     def test_both_return_two_element_tuple(self, mock_imread, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((16, 16), dtype=np.uint16)
@@ -659,20 +659,20 @@ class TestReadDicomVsJpg:
         j = dn.read_jpg_file("a.jpg")
         assert len(d) == 2 and len(j) == 2
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_dicom_rgb_output(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((32, 32), dtype=np.uint16)
         mock_dcm.return_value = ds
         assert dn.read_dicom_file("a.dcm")[0].shape[-1] == 3
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_jpg_preserves_original_shape(self, mock_imread):
         mock_imread.return_value = np.ones((32, 32, 3), dtype=np.uint8)
         assert dn.read_jpg_file("a.jpg")[0].shape[-1] == 3
 
-    @patch("detector_neumonia.pydicom.dcmread")
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.pydicom.dcmread")
+    @patch("read_img.cv2.imread")
     def test_both_return_pil_image(self, mock_imread, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((10, 10), dtype=np.uint16)
@@ -683,7 +683,7 @@ class TestReadDicomVsJpg:
         assert isinstance(d[1], Image.Image)
         assert isinstance(j[1], Image.Image)
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_dicom_calls_dcmread(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.ones((4, 4), dtype=np.uint16)
@@ -691,26 +691,26 @@ class TestReadDicomVsJpg:
         dn.read_dicom_file("f.dcm")
         assert mock_dcm.called
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_jpg_calls_imread(self, mock_imread):
         mock_imread.return_value = np.ones((4, 4, 3), dtype=np.uint8)
         dn.read_jpg_file("f.jpg")
         assert mock_imread.called
 
-    @patch("detector_neumonia.pydicom.dcmread")
+    @patch("read_img.pydicom.dcmread")
     def test_dicom_normalizes_values(self, mock_dcm):
         ds = MagicMock()
         ds.pixel_array = np.array([[500, 4000]], dtype=np.uint16)
         mock_dcm.return_value = ds
         assert dn.read_dicom_file("a.dcm")[0].max() <= 255
 
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.cv2.imread")
     def test_jpg_keeps_values(self, mock_imread):
         mock_imread.return_value = np.array([[100, 200]], dtype=np.uint8)
         assert dn.read_jpg_file("a.jpg")[0].max() <= 255
 
-    @patch("detector_neumonia.pydicom.dcmread")
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.pydicom.dcmread")
+    @patch("read_img.cv2.imread")
     def test_both_fail_on_missing(self, mock_imread, mock_dcm):
         mock_dcm.side_effect = FileNotFoundError
         mock_imread.return_value = None
@@ -719,8 +719,8 @@ class TestReadDicomVsJpg:
         with pytest.raises(Exception):
             dn.read_jpg_file("m.jpg")
 
-    @patch("detector_neumonia.pydicom.dcmread")
-    @patch("detector_neumonia.cv2.imread")
+    @patch("read_img.pydicom.dcmread")
+    @patch("read_img.cv2.imread")
     def test_both_handle_grayscale(self, mock_imread, mock_dcm):
         gray = np.ones((16, 16), dtype=np.uint8)
         ds = MagicMock()
@@ -739,38 +739,38 @@ class TestReadDicomVsJpg:
 
 
 class TestEdgeCases:
-    @patch("detector_neumonia.cv2.resize", side_effect=TypeError)
-    @patch("detector_neumonia.cv2.cvtColor")
-    @patch("detector_neumonia.cv2.createCLAHE")
+    @patch("preprocess_img.cv2.resize", side_effect=TypeError)
+    @patch("preprocess_img.cv2.cvtColor")
+    @patch("preprocess_img.cv2.createCLAHE")
     def test_preprocess_wrong_type_raises(self, mock_clahe, mock_cvt, mock_resize):
         with pytest.raises(Exception):
             dn.preprocess("not-an-image")
 
     def test_dicom_empty_path_raises(self):
-        with patch("detector_neumonia.pydicom.dcmread", side_effect=FileNotFoundError):
+        with patch("read_img.pydicom.dcmread", side_effect=FileNotFoundError):
             with pytest.raises(Exception):
                 dn.read_dicom_file("")
 
     def test_jpg_empty_path_raises(self):
-        with patch("detector_neumonia.cv2.imread", return_value=None):
+        with patch("read_img.cv2.imread", return_value=None):
             with pytest.raises(Exception):
                 dn.read_jpg_file("")
 
-    @patch("detector_neumonia.tf.keras.models.load_model", side_effect=OSError)
+    @patch("load_model.tf.keras.models.load_model", side_effect=OSError)
     def test_model_fun_invalid_path(self, mock_load):
         with pytest.raises(FileNotFoundError):
             dn.model_fun()
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.preprocess", side_effect=Exception("bad"))
+    @patch("integrator.model_fun")
+    @patch("integrator.preprocess", side_effect=Exception("bad"))
     def test_predict_preprocess_fail(self, mock_pp, mock_mf, rgb_512):
-        with patch("detector_neumonia.grad_cam"):
+        with patch("integrator.grad_cam"):
             with pytest.raises(Exception):
                 dn.predict(rgb_512)
 
-    @patch("detector_neumonia.model_fun")
-    @patch("detector_neumonia.grad_cam")
-    @patch("detector_neumonia.preprocess")
+    @patch("integrator.model_fun")
+    @patch("integrator.grad_cam")
+    @patch("integrator.preprocess")
     def test_predict_no_model_fun(self, mock_pp, mock_gc, mock_mf, rgb_512):
         mock_mf.side_effect = FileNotFoundError
         mock_pp.return_value = np.random.rand(1, 512, 512, 1).astype(np.float32)
@@ -778,22 +778,22 @@ class TestEdgeCases:
             dn.predict(rgb_512)
 
     def test_dicom_non_existent_path(self):
-        with patch("detector_neumonia.pydicom.dcmread", side_effect=FileNotFoundError):
+        with patch("read_img.pydicom.dcmread", side_effect=FileNotFoundError):
             with pytest.raises(Exception):
                 dn.read_dicom_file("/nonexistent/file.dcm")
 
     def test_jpg_non_existent_path(self):
-        with patch("detector_neumonia.cv2.imread", return_value=None):
+        with patch("read_img.cv2.imread", return_value=None):
             with pytest.raises(Exception):
                 dn.read_jpg_file("/nonexistent/file.jpg")
 
     def test_predict_empty_array_raises(self):
-        with patch("detector_neumonia.model_fun") as mock_mf:
+        with patch("integrator.model_fun") as mock_mf:
             m = MagicMock()
             m.predict.return_value = np.array([[0.1, 0.8, 0.1]], dtype=np.float32)
             mock_mf.return_value = m
-            with patch("detector_neumonia.grad_cam"):
-                with patch("detector_neumonia.preprocess", side_effect=Exception):
+            with patch("integrator.grad_cam"):
+                with patch("integrator.preprocess", side_effect=Exception):
                     with pytest.raises(Exception):
                         dn.predict(np.array([], dtype=np.uint8))
 
