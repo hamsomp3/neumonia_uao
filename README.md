@@ -1,12 +1,10 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/TensorFlow-2.21%2B-orange?logo=tensorflow" alt="TensorFlow">
-  <img src="https://img.shields.io/badge/Streamlit-1.60%2B-red?logo=streamlit" alt="Streamlit">
-  <img src="https://img.shields.io/badge/FastAPI-✓-teal?logo=fastapi" alt="FastAPI">
   <img src="https://img.shields.io/badge/OpenCV-5.0%2B-brightgreen?logo=opencv" alt="OpenCV">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT">
   <img src="https://img.shields.io/badge/uv-package%20manager-purple" alt="uv">
-  <img src="https://img.shields.io/badge/tests-120%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-115%20passed-brightgreen" alt="Tests">
 </p>
 
 <h1 align="center">🫁 Neumonía Detector</h1>
@@ -37,8 +35,19 @@ Incluye **Grad-CAM** (Gradient-weighted Class Activation Mapping) para generar m
 - **Grad-CAM** — Visualización del mapa de calor sobre la imagen original
 - **Exportación** — Guardado de resultados en CSV y generación de PDF con el reporte
 - **Interfaz gráfica** — App de escritorio construida con Tkinter
-- **API REST** — Backend FastAPI para integración externa
-- **Web UI** — Interfaz web con Streamlit
+
+## Arquitectura
+
+El código está organizado en **6 módulos** dentro de `src/` con responsabilidades únicas:
+
+| Módulo | Responsabilidad |
+|--------|----------------|
+| `detector_neumonia.py` | App Tkinter (entrada principal) |
+| `read_img.py` | Lectura de imágenes DICOM/JPG/PNG |
+| `preprocess_img.py` | Preprocesamiento: resize, CLAHE, normalización |
+| `load_model.py` | Carga y validación del modelo CNN |
+| `grad_cam.py` | Generación de mapa de calor Grad-CAM |
+| `integrator.py` | Orquestador del pipeline predictivo |
 
 ---
 
@@ -79,17 +88,11 @@ La red neuronal convolucional está basada en el artículo *"Efficient Deep Netw
 | Target | Descripción |
 |--------|-------------|
 | `limpiar` | Limpia archivos temporales (`.o`, `.out`, `.exe`, `.log`) |
-| `stream` | Limpia y lanza la app Streamlit |
-| `back` | Limpia e inicia el backend FastAPI |
-| `front` | Limpia e inicia el frontend Uvicorn |
 | `detector` | Limpia y lanza el detector de escritorio (Tkinter) |
 | `test` | Limpia y ejecuta los tests |
 
 ```bash
 make limpiar   # Limpiar temporales
-make stream    # Web UI Streamlit
-make back      # Backend FastAPI
-make front     # Frontend Uvicorn
 make detector  # App escritorio Tkinter
 make test      # Ejecutar tests
 ```
@@ -103,8 +106,8 @@ make test      # Ejecutar tests
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2. Clonar el repositorio
-git clone <repo-url>
-cd clase_3
+git clone git@github.com:hamsomp3/neumonia_uao.git
+cd neumonia_uao
 
 # 3. Instalar dependencias
 uv sync
@@ -124,19 +127,13 @@ uv sync --python /opt/homebrew/opt/python@3.10/bin/python3.10
 ```bash
 # App de escritorio (Tkinter)
 make detector
-
-# Web UI (Streamlit)
-make stream
-
-# Backend API (FastAPI)
-make back
 ```
 
 ---
 
 ## Tests
 
-El proyecto incluye **120 pruebas unitarias** con `pytest`.
+El proyecto incluye **115 pruebas unitarias** con `pytest`.
 
 ### Cobertura
 
@@ -151,7 +148,6 @@ El proyecto incluye **120 pruebas unitarias** con `pytest`.
 | Comparación DICOM vs JPG | 10 |
 | Casos límite | 10 |
 | Exportación CSV | 5 |
-| FastAPI (`main.py`) | 5 |
 
 ### Ejecutar tests
 
@@ -179,27 +175,34 @@ La interfaz Tkinter permite:
 ## Estructura del proyecto
 
 ```
-.
-├── detector_neumonia.py   # App de escritorio (Tkinter)
-├── main.py                # Punto de entrada para FastAPI
-├── prueba.py              # App Streamlit (en desarrollo)
-├── Makefile               # Automatización de tareas
-├── pyproject.toml         # Configuración del proyecto y dependencias
-├── Dockerfile             # Imagen Docker
-├── models/
-│   └── conv_MLP_84.h5    # Modelo CNN pre-entrenado
-├── test/
+neumonia_uao/
+├── src/                          ← Código fuente
+│   ├── detector_neumonia.py      ← App Tkinter (entrada principal)
+│   ├── read_img.py               ← Lectura DICOM / JPG / PNG
+│   ├── preprocess_img.py         ← Preprocesamiento (CLAHE, resize)
+│   ├── load_model.py             ← Carga del modelo CNN
+│   ├── grad_cam.py               ← Mapa de calor Grad-CAM
+│   └── integrator.py             ← Orquestador del pipeline
+├── test/                         ← Tests unitarios
 │   ├── __init__.py
-│   ├── conftest.py        # Fixtures compartidos
-│   └── test_detector.py   # 120 pruebas unitarias
-└── README.md              # Este archivo
+│   ├── conftest.py               ← Fixtures compartidos
+│   └── test_detector.py          ← 115 tests
+├── images/                       ← Imágenes de prueba (DICOM / JPG)
+├── models/
+│   └── conv_MLP_84.h5           ← Modelo CNN pre-entrenado
+├── pyproject.toml                ← Configuración y dependencias
+├── Makefile                      ← Automatización
+├── Dockerfile                    ← Contenedor
+├── LICENSE                       ← Licencia MIT
+├── README.md                     ← Este archivo
+└── CONSTITUTION.md               ← Contexto del proyecto
 ```
 
 ---
 
 ## Licencia
 
-Este proyecto está bajo la licencia **MIT**.
+Este proyecto está bajo la licencia **MIT**. Ver el archivo [LICENSE](LICENSE) para más detalles.
 
 ---
 

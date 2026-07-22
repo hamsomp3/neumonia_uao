@@ -36,12 +36,11 @@ git push
 | **Lenguaje** | Python 3.10+ |
 | **Gestor de paquetes** | [uv](https://docs.astral.sh/uv/) |
 | **Deep Learning** | TensorFlow 2.21+, Matplotlib |
-| **Web / API** | Streamlit 1.60+, FastAPI, Uvicorn |
 | **Visión artificial** | OpenCV 5.0+, Pillow |
 | **Imágenes médicas** | PyDICOM |
 | **GUI escritorio** | Tkinter, PyAutoGUI, tkcap, img2pdf |
 | **Datos** | Pandas 2.3+ |
-| **Testing** | pytest 8+ (120 tests) |
+| **Testing** | pytest 8+ (115 tests) |
 | **Linting** | Ruff |
 | **Pre-commit** | pre-commit |
 | **Dev** | watchdog |
@@ -71,6 +70,19 @@ git push
 - El Python de uv no incluye Tkinter
 - Solución: `uv sync --python /opt/homebrew/opt/python@3.10/bin/python3.10`
 - Requiere `brew install python-tk@3.10`
+
+### Refactorización a src/ layout
+- Todo el código fuente se movió a `src/`
+- Los módulos se importan entre sí con imports absolutos (no relativos)
+- `pytest` resuelve las rutas via `pythonpath = ["src"]` en `pyproject.toml`
+- Archivos `main.py` y `prueba.py` eliminados (sobrantes del template)
+- Empaquetado: `packages = ["src"]` en hatch
+
+### Modularización del detector
+- `detector_neumonia.py` quedó como fachada backward-compatible que re-exporta funciones
+- 5 módulos con responsabilidad única: `read_img`, `preprocess_img`, `load_model`, `grad_cam`, `integrator`
+- Cada módulo tiene type hints, docstrings PEP 257, y manejo de excepciones explícito
+- Las 115 pruebas unitarias se actualizaron con las rutas de patch correctas
 
 ---
 
